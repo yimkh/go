@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 //a port
@@ -18,19 +17,8 @@ const portPub string = ":8080"
 //yueque URL
 var yqURL string = "https://www.yuque.com/"
 
-func main() {
-	http.HandleFunc("/", getMes) // store data to mysql and push sametime
-	// http.HandleFunc("/getMessage", handle(){ get data from mysql})// get data from mysql by set fillter
-
-	err := http.ListenAndServe(portPub, nil)
-	if err != nil {
-		log.Fatalf("listenandserver error: %s", err)
-		return
-	}
-}
-
 //obtain the message from yueque by webhook
-//then instore mysql
+//then save in mysql
 //then enter next
 func getMes(w http.ResponseWriter, r *http.Request) {
 	data, err := ioutil.ReadAll(r.Body)
@@ -71,74 +59,6 @@ func getMes(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("stmt.Exec error: %s\n", err)
 	}
 
-	startBot()
-}
-
-//with input, you could get kinds of message
-//get - latest update message
-//name - name's latest update message(with date)
-func inputGetMes(bot *tgbotapi.BotAPI) {
-	db, err := sql.Open("mysql", "root:123456@tcp(127.0.0.1:3306)/YQ")
-	if err != nil {
-		log.Fatalf("sql.Open error: %s\n", err)
-	}
-
-	rows, err := db.Query("SELECT * FROM user_info")
-	if err != nil {
-		log.Fatalf("db.Query error: %s\n", err)
-	}
-
-	var id int
-	var title string
-	var name string
-	var path string
-
-	for rows.Next() {
-		err = rows.Scan(&id, &title, &name, &path)
-		if err != nil {
-			log.Fatalf("rows.Scan error: %s\n", err)
-		}
-	}
-
-	u := tgbotapi.NewUpdate(0)
-	// u.Timeout = 60
-
-	updates, err := bot.GetUpdatesChan(u)
-
-	for update := range updates {
-		if update.Message == nil { // ignore any non-Message Updates
-			continue
-		} else if update.Message.Text == "get" {
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, title+"\n"+name+"\n"+path+"\n")
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			bot.Send(msg)
-		} else {
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "please input “get” in order to getupdate messages")
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			bot.Send(msg)
-		}
-	}
-}
-
-//send update message continuously
-func autoGetMes(bot *tgbotapi.BotAPI) {
-
-}
-
-//a bot to do things
-func startBot() {
-	bot, err := tgbotapi.NewBotAPI("996518758:AAGU29DSWvGSqCO4yrR2pcOzcJGAZ9fn4JM")
-	if err != nil {
-		log.Panic(err)
-	}
-
-	bot.Debug = true
-
-	go inputGetMes(bot)
+	text := title + "\n" + name + "\n" + path + "\n"
+	startBot(text)
 }
